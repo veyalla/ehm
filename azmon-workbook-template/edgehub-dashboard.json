@@ -1,0 +1,57 @@
+{
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workbookDisplayName": {
+      "type": "string",
+      "defaultValue": "IoT Edge Hub Dashboard",
+      "metadata": {
+        "description": "The friendly name for the workbook that is used in the Gallery or Saved List.  This name must be unique within a resource group."
+      }
+    },
+    "workbookType": {
+      "type": "string",
+      "defaultValue": "workbook",
+      "metadata": {
+        "description": "The gallery that the workbook will been shown under. Supported values include workbook, tsg, etc. Usually, this is 'workbook'"
+      }
+    },
+    "workbookSourceId": {
+      "type": "string",
+      "defaultValue": "Azure Monitor",
+      "metadata": {
+        "description": "The id of resource instance to which the workbook will be associated"
+      }
+    },
+    "workbookId": {
+      "type": "string",
+      "defaultValue": "[newGuid()]",
+      "metadata": {
+        "description": "The unique guid for this workbook instance"
+      }
+    }
+  },
+  "resources": [
+    {
+      "name": "[parameters('workbookId')]",
+      "type": "microsoft.insights/workbooks",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2018-06-17-preview",
+      "dependsOn": [],
+      "kind": "shared",
+      "properties": {
+        "displayName": "[parameters('workbookDisplayName')]",
+        "serializedData": "{\"version\":\"Notebook/1.0\",\"items\":[{\"type\":9,\"content\":\"{\\\"version\\\":\\\"KqlParameterItem/1.0\\\",\\\"query\\\":\\\"\\\",\\\"crossComponentResources\\\":[],\\\"parameters\\\":[{\\\"id\\\":\\\"1b4b2d2e-4f2e-4881-903d-f307d6958a1c\\\",\\\"version\\\":\\\"KqlParameterItem/1.0\\\",\\\"name\\\":\\\"timeRange\\\",\\\"label\\\":\\\"Time range\\\",\\\"type\\\":4,\\\"typeSettings\\\":{\\\"selectableValues\\\":[{\\\"durationMs\\\":900000},{\\\"durationMs\\\":1800000},{\\\"durationMs\\\":3600000},{\\\"durationMs\\\":14400000},{\\\"durationMs\\\":43200000},{\\\"durationMs\\\":86400000},{\\\"durationMs\\\":172800000},{\\\"durationMs\\\":259200000},{\\\"durationMs\\\":604800000},{\\\"durationMs\\\":1209600000},{\\\"durationMs\\\":2592000000}]},\\\"value\\\":{\\\"durationMs\\\":172800000}}],\\\"style\\\":\\\"pills\\\",\\\"queryType\\\":0,\\\"resourceType\\\":\\\"microsoft.operationalinsights/workspaces\\\"}\",\"customWidth\":\"100\",\"name\":\"parameters - 1\"},{\"type\":3,\"content\":\"{\\\"version\\\":\\\"KqlItem/1.0\\\",\\\"query\\\":\\\"let minPeriod = 5m;\\\\nlet numPeriods = 50;\\\\nlet startTime = {timeRange:start};\\\\nlet endTime = now();\\\\nlet timeBin_ = (endTime - startTime) / numPeriods;\\\\nlet timeBin = iff(timeBin_ < minPeriod, minPeriod, timeBin_);\\\\nlet set1 = promMetrics_CL\\\\n| where Name_s == \\\\\\\"edgehub_message_size_bytes_sum\\\\\\\"\\\\n| extend dimensions=parse_json(Tags_s)\\\\n| extend device = tostring(dimensions.edge_device)\\\\n| extend id = trim_start(@\\\\\\\"[^/]+/\\\\\\\", tostring(dimensions.id))\\\\n| extend value = toint(Value_s)\\\\n| extend id_device = strcat(id,\\\\\\\"+\\\\\\\",device) \\\\n| project id, device, id_device, value, TimeGeneratedUtc_t\\\\n| order by id_device, TimeGeneratedUtc_t\\\\n| serialize | extend nextValue = next(value, 1) | extend nextId = next(id_device, 1)\\\\n| extend diff = iff((value - nextValue) >= 0, value - nextValue, value)\\\\n| where id_device == nextId and diff >= 0\\\\n| make-series Trend = sum(diff) on TimeGeneratedUtc_t from startTime to endTime step timeBin by id_device, id, device\\\\n| project-away TimeGeneratedUtc_t;\\\\nlet set2 = set1\\\\n| join kind=inner (set1\\\\n    | extend TrendTotal = Trend\\\\n    | mvexpand TrendTotal\\\\n    | summarize totalBytes = sum(toint(TrendTotal)) by id_device, id, device\\\\n    ) on id_device\\\\n| extend Name = id, Bytes = totalBytes, Id = id_device, ParentId = device;\\\\nlet set3 = set2 \\\\n| union (set2\\\\n    | summarize Bytes = sum(totalBytes) by Id = device\\\\n    | extend ParentId = '', Name = strcat('💻 ', Id)\\\\n    )\\\\n| project Name, Bytes, Id, ParentId, Trend;\\\\nlet set4 = set3\\\\n| mv-expand with_itemindex=x Trend to typeof(long)\\\\n| summarize sum(Trend) by  ParentId, x\\\\n| summarize Trend=make_list(sum_Trend) by ParentId\\\\n| join set3 on $left.ParentId == $right.Id\\\\n| extend ParentId = ''\\\\n| union set2\\\\n| project Name, Bytes, Id, ParentId, Trend;\\\\nset4\\\\n//{timeRange:end}\\\\n\\\",\\\"size\\\":2,\\\"exportParameterName\\\":\\\"SelectedRow\\\",\\\"exportDefaultValue\\\":\\\"default\\\",\\\"title\\\":\\\"Edge device tree\\\",\\\"timeContext\\\":{\\\"durationMs\\\":0},\\\"timeContextFromParameter\\\":\\\"timeRange\\\",\\\"queryType\\\":0,\\\"resourceType\\\":\\\"microsoft.operationalinsights/workspaces\\\",\\\"visualization\\\":\\\"table\\\",\\\"gridSettings\\\":{\\\"formatters\\\":[{\\\"columnMatch\\\":\\\"Name\\\",\\\"formatter\\\":1,\\\"formatOptions\\\":{\\\"showIcon\\\":true}},{\\\"columnMatch\\\":\\\"Bytes\\\",\\\"formatter\\\":4,\\\"formatOptions\\\":{\\\"min\\\":0,\\\"palette\\\":\\\"blue\\\",\\\"showIcon\\\":true},\\\"numberFormat\\\":{\\\"unit\\\":2,\\\"options\\\":{\\\"style\\\":\\\"decimal\\\",\\\"useGrouping\\\":true,\\\"maximumFractionDigits\\\":1}}},{\\\"columnMatch\\\":\\\"Id\\\",\\\"formatter\\\":5,\\\"formatOptions\\\":{\\\"showIcon\\\":true}},{\\\"columnMatch\\\":\\\"ParentId\\\",\\\"formatter\\\":5,\\\"formatOptions\\\":{\\\"showIcon\\\":true}},{\\\"columnMatch\\\":\\\"Trend\\\",\\\"formatter\\\":21,\\\"formatOptions\\\":{\\\"min\\\":0,\\\"palette\\\":\\\"blueDark\\\",\\\"showIcon\\\":true}}],\\\"filter\\\":true,\\\"hierarchySettings\\\":{\\\"idColumn\\\":\\\"Id\\\",\\\"parentColumn\\\":\\\"ParentId\\\",\\\"treeType\\\":0,\\\"expanderColumn\\\":\\\"Name\\\",\\\"expandTopLevel\\\":false},\\\"sortBy\\\":[{\\\"itemKey\\\":\\\"Name\\\",\\\"sortOrder\\\":1}],\\\"labelSettings\\\":[]}}\",\"customWidth\":\"45\",\"name\":\"query - 4\"},{\"type\":3,\"content\":\"{\\\"version\\\":\\\"KqlItem/1.0\\\",\\\"query\\\":\\\"let selRow = '{SelectedRow}';\\\\nlet rowJson = parse_json(selRow);\\\\nlet cap = extract_all(@\\\\\\\"\\\\\\\"\\\\\\\"Id\\\\\\\"\\\\\\\":\\\\\\\\s*\\\\\\\"\\\\\\\"([^\\\\\\\"\\\\\\\"]+)\\\\\\\", dynamic([1]), tostring(rowJson));\\\\nlet deviceid = iff(rowJson.ParentId != \\\\\\\"\\\\\\\", rowJson.ParentId, cap[0]);\\\\nlet data = promMetrics_CL\\\\n| where Name_s == \\\\\\\"edgehub_messages_sent_total\\\\\\\"\\\\n| extend dimensions=parse_json(Tags_s)\\\\n| extend device = tostring(dimensions.edge_device)\\\\n| where device  == deviceid\\\\n| extend target = trim_start(@\\\\\\\"[^/]+/\\\\\\\", extractjson(\\\\\\\"$.to\\\\\\\", tostring(dimensions), typeof(string)))\\\\n| extend source = trim_start(@\\\\\\\"[^/]+/\\\\\\\", tostring(dimensions.from))\\\\n| extend messages = toint(Value_s)\\\\n| extend timeUtc = TimeGeneratedUtc_t\\\\n| extend sourceTarget = strcat(source,\\\\\\\"+\\\\\\\",target) \\\\n| project  timeUtc, device, source, target, sourceTarget,  messages\\\\n| order by sourceTarget, timeUtc\\\\n| serialize | extend nextCount = next(messages, 1) | extend nextSourceTarget= next(sourceTarget, 1)\\\\n| extend diff = iff((messages - nextCount) >= 0, messages - nextCount, messages)\\\\n| where sourceTarget  == nextSourceTarget and diff >= 0\\\\n| project  timeUtc, device, source, target, sourceTarget, messages, diff;\\\\ndata\\\\n| summarize messageCount = sum(diff) by source, target\\\\n| extend id = ''\\\\n| project id, source, target, messageCount\\\\n| union (data\\\\n    | sample-distinct 100 of source\\\\n    | extend id = source\\\\n    | union (data\\\\n        | sample-distinct 100 of target\\\\n        | extend  id = target)\\\\n    | sample-distinct 100 of id\\\\n    | project id);\\\",\\\"size\\\":2,\\\"title\\\":\\\"Message flow graph\\\",\\\"timeContext\\\":{\\\"durationMs\\\":0},\\\"timeContextFromParameter\\\":\\\"timeRange\\\",\\\"queryType\\\":0,\\\"resourceType\\\":\\\"microsoft.operationalinsights/workspaces\\\",\\\"visualization\\\":\\\"graph\\\",\\\"graphSettings\\\":{\\\"type\\\":0,\\\"topContent\\\":{\\\"columnMatch\\\":\\\"messageCount\\\",\\\"formatter\\\":12,\\\"formatOptions\\\":{\\\"showIcon\\\":true},\\\"numberFormat\\\":{\\\"unit\\\":17,\\\"options\\\":{\\\"style\\\":\\\"decimal\\\",\\\"useGrouping\\\":true}}},\\\"centerContent\\\":{\\\"columnMatch\\\":\\\"id\\\",\\\"formatter\\\":12,\\\"formatOptions\\\":{\\\"showIcon\\\":true}},\\\"bottomContent\\\":{\\\"columnMatch\\\":\\\"messageCount\\\",\\\"formatOptions\\\":{\\\"showIcon\\\":true},\\\"numberFormat\\\":{\\\"unit\\\":17,\\\"options\\\":{\\\"style\\\":\\\"decimal\\\",\\\"maximumFractionDigits\\\":0}}},\\\"nodeIdField\\\":\\\"id\\\",\\\"sourceIdField\\\":\\\"source\\\",\\\"targetIdField\\\":\\\"target\\\",\\\"edgeLabel\\\":\\\"messageCount\\\",\\\"nodeSize\\\":null,\\\"staticNodeSize\\\":100,\\\"colorSettings\\\":{\\\"nodeColorField\\\":\\\"id\\\",\\\"type\\\":1,\\\"colorPalette\\\":\\\"default\\\"},\\\"hivesMargin\\\":5}}\",\"customWidth\":\"55\",\"conditionalVisibility\":{\"parameterName\":\"SelectedRow\",\"comparison\":\"isNotEqualTo\",\"value\":\"default\"},\"name\":\"query - 3\"}],\"isLocked\":false,\"defaultResourceIds\":[\"/subscriptions/acea0c3c-8687-412e-8949-9f04c7d96d96/resourceGroups/pulumif6c24cfd/providers/Microsoft.OperationalInsights/workspaces/iotEdgeMetricsWorkspace1\",\"Azure Monitor\"],\"fallbackResourceIds\":[\"/subscriptions/acea0c3c-8687-412e-8949-9f04c7d96d96/resourceGroups/pulumif6c24cfd/providers/Microsoft.OperationalInsights/workspaces/iotEdgeMetricsWorkspace1\",\"Azure Monitor\"],\"styleSettings\":{}}",
+        "version": "1.0",
+        "sourceId": "[parameters('workbookSourceId')]",
+        "category": "[parameters('workbookType')]"
+      }
+    }
+  ],
+  "outputs": {
+    "workbookId": {
+      "type": "string",
+      "value": "[resourceId( 'microsoft.insights/workbooks', parameters('workbookId'))]"
+    }
+  },
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#"
+}
