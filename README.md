@@ -63,7 +63,7 @@
     | `syncTarget`          | Set to "AzureLogAnalytics" or "IoTHub"  When set to "AzureLogAnalytics", environment variables  `AzMonWorkspaceId` and `AzMonWorkspaceKey` need to be set                              | string       |
     | `endpoints`           | A JSON section containing name and collection URL key-value pairs.                                                                                                                     | JSON section |
 
-1. Deploy the ARM template containing the Azure Monitor Workbook ARM template from [here](azmon-workbook-template/).
+1. Deploy the Azure Monitor Workbook template by following the instructions from [here](azmon-workbook-template/).
 
 
 

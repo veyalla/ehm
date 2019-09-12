@@ -4,6 +4,6 @@
     >The easiest way to get this resourceId is `az resource list | grep "OperationalInsights" | grep "id"` from the az cli.
 
 1. Import using steps labeled in the two screenshots below:
-    ![media/steps-1-2-3.png]
-    ![media/steps-4-5-6-7-8.png]
+    ![media/steps-1-2-3.png](media/steps-1-2-3.png)
+    ![media/steps-4-5-6-7-8.png](media/steps-4-5-6-7-8.png)
 
