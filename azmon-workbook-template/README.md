@@ -7,3 +7,6 @@
     ![media/steps-1-2-3.png](media/steps-1-2-3.png)
     ![media/steps-4-5-6-7-8.png](media/steps-4-5-6-7-8.png)
 
+# Demo
+
+![](media/demo1.gif)
