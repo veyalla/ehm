@@ -1,4 +1,9 @@
 # IoT Edge Hub Azure Monitor Workbook
-<a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FAzure%2Fazure-quickstart-templates%2Fmaster%2F101-1vm-2nics-2subnets-1vnet%2Fazuredeploy.json" target="_blank">
-    <img src="http://azuredeploy.net/deploybutton.png"/>
-</a>
+
+1. Replace the **defaultResourceIds** key at the bottom of [workbook json]() with resource Id of Azure Monitor Log Analytics workspace and copy the JSON.
+    >The easiest way to get this resourceId is `az resource list | grep "OperationalInsights" | grep "id"` from the az cli.
+
+1. Import using steps labeled in the two screenshots below:
+    ![media/steps-1-2-3.png]
+    ![media/steps-4-5-6-7-8.png]
+
