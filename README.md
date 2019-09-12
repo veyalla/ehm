@@ -5,7 +5,7 @@
 1. Use IoT Edge Hub with tag `1.0.9-rc2` and following configuration: 
 
     ```json
-        "edgeHub": {
+    "edgeHub": {
         "settings": {
             "image": "mcr.microsoft.com/azureiotedge-hub:1.0.9-rc2",
             "createOptions": "{\"User\":\"ContainerAdministrator\",\"ExposedPorts\":{\"9600/tcp\":{},\"5671/tcp\":{},\"8883/tcp\":{}}}"
@@ -13,15 +13,15 @@
         "type": "docker",
         "env": {
             "experimentalfeatures__enabled": {
-            "value": true
+                "value": true
             },
             "experimentalfeatures__enableMetrics": {
-            "value": true
+                "value": true
             }
         },
         "status": "running",
         "restartPolicy": "always"
-        }
+    }
     ```
 
     >Windows containers need edgeHub to be run a ContainerAdministrator for now if exposing metrics endpoint. Please remove the User key from createOptions on Linux.
