@@ -12,6 +12,10 @@
           "name": "timeRange",
           "label": "Time range",
           "type": 4,
+          "isRequired": true,
+          "value": {
+            "durationMs": 14400000
+          },
           "typeSettings": {
             "selectableValues": [{
                 "durationMs": 900000
@@ -46,10 +50,8 @@
               {
                 "durationMs": 2592000000
               }
-            ]
-          },
-          "value": {
-            "durationMs": 14400000
+            ],
+            "allowCustom": true
           }
         }],
         "style": "pills",
@@ -63,11 +65,12 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let minPeriod = 5m;\nlet numPeriods = 50;\nlet startTime = {timeRange:start};\nlet endTime = now();\nlet timeBin_ = (endTime - startTime) / numPeriods;\nlet timeBin = iff(timeBin_ < minPeriod, minPeriod, timeBin_);\nlet set1 = promMetrics_CL\n| where Name_s == \"edgehub_message_size_bytes_sum\"\n| extend dimensions=parse_json(Tags_s)\n| extend device = tostring(dimensions.edge_device)\n| extend id = trim_start(@\"[^/]+/\", tostring(dimensions.id))\n| extend value = toint(Value_s)\n| extend id_device = strcat(id,\"+\",device) \n| project id, device, id_device, value, TimeGeneratedUtc_t\n| order by id_device, TimeGeneratedUtc_t\n| serialize | extend nextValue = next(value, 1) | extend nextId = next(id_device, 1)\n| extend diff = iff((value - nextValue) >= 0, value - nextValue, value)\n| where id_device == nextId and diff >= 0\n| make-series Trend = sum(diff) on TimeGeneratedUtc_t from startTime to endTime step timeBin by id_device, id, device\n| project-away TimeGeneratedUtc_t;\nlet set2 = set1\n| join kind=inner (set1\n    | extend TrendTotal = Trend\n    | mvexpand TrendTotal\n    | summarize totalBytes = sum(toint(TrendTotal)) by id_device, id, device\n    ) on id_device\n| extend Name = strcat('📦 ', id), Bytes = totalBytes, Id = id_device, ParentId = device;\nlet set3 = set2 \n| union (set2\n    | summarize Bytes = sum(totalBytes) by Id = device\n    | extend ParentId = '', Name = strcat('💻 ', Id)\n    )\n| project Name, Bytes, Id, ParentId, Trend;\nlet set4 = set3\n| mv-expand with_itemindex=x Trend to typeof(long)\n| summarize sum(Trend) by  ParentId, x\n| summarize Trend=make_list(sum_Trend) by ParentId\n| join set3 on $left.ParentId == $right.Id\n| extend ParentId = ''\n| union set2\n| project Name, Bytes, Id, ParentId, Trend;\nset4\n//{timeRange:end}\n",
-        "size": 2,
+        "query": "let minPeriod = 5m;\nlet numPeriods = 24;\nlet startTime = {timeRange:start};\nlet endTime = {timeRange:end};\nlet timeBin_ = (endTime - startTime) / numPeriods;\nlet timeBin = iff(timeBin_ < minPeriod, minPeriod, timeBin_);\nlet set1 = promMetrics_CL\n| where Name_s == \"edgehub_message_size_bytes_sum\"\n| extend dimensions=parse_json(Tags_s)\n| extend device = tostring(dimensions.edge_device)\n| extend id = trim_start(@\"[^/]+/\", tostring(dimensions.id))\n| extend value = toint(Value_s)\n| extend id_device = strcat(id,\"+\",device) \n| project id, device, id_device, value, TimeGeneratedUtc_t\n| order by id_device, TimeGeneratedUtc_t\n| serialize | extend nextValue = next(value, 1) | extend nextId = next(id_device, 1)\n| extend diff = iff((value - nextValue) >= 0, value - nextValue, value)\n| where id_device == nextId and diff >= 0\n| make-series Trend = sum(diff) on TimeGeneratedUtc_t from startTime to endTime step timeBin by id_device, id, device\n| project-away TimeGeneratedUtc_t;\nlet set2 = set1\n| join kind=inner (set1\n    | extend TrendTotal = Trend\n    | mvexpand TrendTotal\n    | summarize totalBytes = sum(toint(TrendTotal)) by id_device, id, device\n    ) on id_device\n| extend Name = strcat('📦 ', id), Bytes = totalBytes, Id = id_device, ParentId = device;\n// Gather total messages received.\nlet set3 = promMetrics_CL\n| where Name_s == \"edgehub_messages_received_total\"\n| where TimeGeneratedUtc_t > startTime\n| extend dimensions=parse_json(Tags_s)\n| extend device = tostring(dimensions.edge_device)\n| extend id = trim_start(@\"[^/]+/\", tostring(dimensions.id))\n| extend value = toint(Value_s)\n| extend id_device = strcat(id,\"+\",device) \n| project id, device, id_device, value, TimeGeneratedUtc_t\n| order by id_device, TimeGeneratedUtc_t\n| serialize | extend nextValue = next(value, 1) | extend nextId = next(id_device, 1)\n| extend diff = iff((value - nextValue) >= 0, value - nextValue, value)\n| where id_device == nextId and diff >= 0\n| summarize Messages = sum(diff) by id_device\n| join kind=rightouter set2 on $left.id_device == $right.Id\n| project Name, Messages, Bytes, Id, ParentId, Trend, device, totalBytes;\nlet set4 = set3 \n| union (set3\n    | summarize Bytes = sum(totalBytes) by Id = device\n    | extend ParentId = '', Name = strcat('💻 ', Id)\n    )\n| project Name, Messages, Bytes, Id, ParentId, Trend;\nlet set5 = set4\n| mv-expand with_itemindex=x Trend to typeof(long)\n| summarize sum(Trend), Messages=sum(Messages) by  ParentId, x\n| summarize Trend=make_list(sum_Trend) by ParentId, Messages\n| join set4 on $left.ParentId == $right.Id\n| extend ParentId = ''\n| union set3\n| extend AvgMsgSize = Bytes/Messages\n| project Name, AvgMsgSize, Messages, Bytes, Id, ParentId, Trend\n| order by Bytes desc;\nset5\n//{timeRange:end}\n",
+        "size": 0,
         "exportParameterName": "SelectedRow",
         "exportDefaultValue": "default",
-        "title": "Edge device tree",
+        "exportToExcelOptions": "visible",
+        "title": "Messages received by IoT Edge Hub",
         "timeContext": {
           "durationMs": 0
         },
@@ -81,6 +84,42 @@
               "formatter": 1,
               "formatOptions": {
                 "showIcon": true
+              },
+              "numberFormat": {
+                "unit": 2,
+                "options": {
+                  "style": "decimal",
+                  "maximumFractionDigits": 2
+                }
+              }
+            },
+            {
+              "columnMatch": "AvgMsgSize",
+              "formatter": 0,
+              "formatOptions": {
+                "showIcon": true
+              },
+              "numberFormat": {
+                "unit": 2,
+                "options": {
+                  "style": "decimal",
+                  "maximumFractionDigits": 2
+                }
+              }
+            },
+            {
+              "columnMatch": "Messages",
+              "formatter": 0,
+              "formatOptions": {
+                "showIcon": true
+              },
+              "numberFormat": {
+                "unit": 0,
+                "options": {
+                  "style": "decimal",
+                  "useGrouping": true,
+                  "maximumFractionDigits": 3
+                }
               }
             },
             {
@@ -124,23 +163,265 @@
               }
             }
           ],
+          "rowLimit": 10000,
           "filter": true,
           "hierarchySettings": {
             "idColumn": "Id",
             "parentColumn": "ParentId",
             "treeType": 0,
             "expanderColumn": "Name",
-            "expandTopLevel": false
+            "expandTopLevel": true
           },
-          "sortBy": [{
-            "itemKey": "Name",
-            "sortOrder": 1
-          }],
-          "labelSettings": []
+          "labelSettings": [{
+              "columnId": "Name"
+            },
+            {
+              "columnId": "AvgMsgSize",
+              "label": "Avg message size"
+            },
+            {
+              "columnId": "Messages",
+              "label": "# Messages"
+            },
+            {
+              "columnId": "Bytes"
+            },
+            {
+              "columnId": "Id"
+            },
+            {
+              "columnId": "ParentId"
+            },
+            {
+              "columnId": "Trend",
+              "label": "Bytes Trend"
+            }
+          ]
         }
       },
-      "customWidth": "45",
+      "customWidth": "50",
       "name": "query - 4"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Alert\n| project  TimeGenerated, AlertName, AlertSeverity, ResourceValue, LinkToSearchResults ",
+        "size": 0,
+        "exportToExcelOptions": "visible",
+        "title": "Alerts",
+        "timeContext": {
+          "durationMs": 0
+        },
+        "timeContextFromParameter": "timeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [{
+              "columnMatch": "TimeGenerated",
+              "formatter": 6,
+              "formatOptions": {
+                "showIcon": true
+              },
+              "numberFormat": {
+                "unit": 0,
+                "options": {
+                  "style": "decimal"
+                }
+              },
+              "dateFormat": {
+                "formatName": null
+              }
+            },
+            {
+              "columnMatch": "AlertName",
+              "formatter": 1,
+              "formatOptions": {
+                "showIcon": true
+              }
+            },
+            {
+              "columnMatch": "AlertSeverity",
+              "formatter": 11,
+              "formatOptions": {
+                "showIcon": true
+              }
+            },
+            {
+              "columnMatch": "ResourceValue",
+              "formatter": 0,
+              "formatOptions": {
+                "showIcon": true
+              }
+            },
+            {
+              "columnMatch": "LinkToSearchResults",
+              "formatter": 7,
+              "formatOptions": {
+                "linkTarget": "Url",
+                "linkLabel": "Link",
+                "showIcon": true
+              }
+            }
+          ],
+          "labelSettings": [{
+              "columnId": "TimeGenerated",
+              "label": "Time"
+            },
+            {
+              "columnId": "AlertName",
+              "label": "Name"
+            },
+            {
+              "columnId": "AlertSeverity",
+              "label": "Severity"
+            },
+            {
+              "columnId": "ResourceValue",
+              "label": "Affected resouce"
+            },
+            {
+              "columnId": "LinkToSearchResults",
+              "label": "Details"
+            }
+          ]
+        }
+      },
+      "customWidth": "50",
+      "name": "query - 4"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let selRow = '{SelectedRow}';\nlet rowJson = parse_json(selRow);\nlet cap = extract_all(@\"\"\"Id\"\":\\s*\"\"([^\"\"]+)\", dynamic([1]), tostring(rowJson));\nlet deviceid = iff(rowJson.ParentId != \"\", rowJson.ParentId, cap[0]);\nlet data = promMetrics_CL\n| where Name_s == \"edgehub_messages_sent_total\"\n| extend dimensions=parse_json(Tags_s)\n| extend device = tostring(dimensions.edge_device)\n| where device  == deviceid\n| extend target = strcat(deviceid, \"/\", trim_start(@\"[^/]+/\", extractjson(\"$.to\", tostring(dimensions), typeof(string))))\n| extend source = trim_start(@\"[^/]+/\", tostring(dimensions.from))\n| extend messages = toint(Value_s)\n| extend timeUtc = TimeGeneratedUtc_t\n| extend sourceTarget = strcat(source,\"+\",target) \n| project  timeUtc, device, source, target, sourceTarget,  messages\n| order by sourceTarget, timeUtc\n| serialize | extend nextCount = next(messages, 1) | extend nextSourceTarget= next(sourceTarget, 1)\n| extend diff = iff((messages - nextCount) >= 0, messages - nextCount, messages)\n| where sourceTarget  == nextSourceTarget and diff >= 0\n| project  timeUtc, device, source, target, sourceTarget, messages, diff;\nlet set1 = data\n| summarize messageCount = sum(diff) by target, source, sourceTarget\n| extend ParentId=target\n| extend Id=sourceTarget\n| extend Name=strcat('📦 ', source)\n| project Name, Id, ParentId, target, source, messageCount;\nlet set2 = set1\n| union (set1\n    | summarize messageCount=sum(messageCount) by target\n    | extend Id=target\n    | extend Name=strcat('📞 ', Id) \n    )\n| project-away target, source\n| order by messageCount;\nlet set3 = promMetrics_CL\n| where Name_s == 'edgehub_message_send_duration_seconds'\n| extend dimensions=parse_json(Tags_s)\n| extend target = strcat(deviceid, \"/\", trim_start(@\"[^/]+/\", extractjson(\"$.to\", tostring(dimensions), typeof(string))))\n| extend source = trim_start(@\"[^/]+/\", tostring(dimensions.from))\n| extend device = tostring(dimensions.edge_device)\n| extend quantile = tostring(dimensions.quantile)\n| where quantile == '0.9'\n| where Value_s != 'NaN'\n| where device == deviceid\n| extend val = todouble(Value_s) \n| project TimeGeneratedUtc_t, target, source, val\n| extend Id=strcat(source,\"+\",target)\n| summarize P90Latency=percentile(val, 90)  by Id;\nset2\n| join kind=leftouter set3 on Id\n| project-away Id1\n| extend MsgRate = messageCount/(({timeRange:end}-{timeRange:start})/1s)\n| project Name, Id, ParentId, messageCount, MsgRate, P90Latency",
+        "size": 0,
+        "exportToExcelOptions": "visible",
+        "title": "Messages routed by IoT Edge Hub for selected device",
+        "timeContext": {
+          "durationMs": 0
+        },
+        "timeContextFromParameter": "timeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [{
+              "columnMatch": "Name",
+              "formatter": 0,
+              "formatOptions": {
+                "showIcon": true
+              }
+            },
+            {
+              "columnMatch": "Id",
+              "formatter": 5,
+              "formatOptions": {
+                "showIcon": true
+              }
+            },
+            {
+              "columnMatch": "ParentId",
+              "formatter": 5,
+              "formatOptions": {
+                "showIcon": true
+              }
+            },
+            {
+              "columnMatch": "messageCount",
+              "formatter": 4,
+              "formatOptions": {
+                "min": 0,
+                "palette": "blue",
+                "showIcon": true
+              },
+              "numberFormat": {
+                "unit": 0,
+                "options": {
+                  "style": "decimal",
+                  "useGrouping": true,
+                  "maximumFractionDigits": 3
+                }
+              }
+            },
+            {
+              "columnMatch": "MsgRate",
+              "formatter": 0,
+              "formatOptions": {
+                "showIcon": true
+              },
+              "numberFormat": {
+                "unit": 31,
+                "options": {
+                  "style": "decimal",
+                  "minimumFractionDigits": 1,
+                  "maximumFractionDigits": 1
+                }
+              }
+            },
+            {
+              "columnMatch": "P90Latency",
+              "formatter": 8,
+              "formatOptions": {
+                "min": 0.0001,
+                "max": 5,
+                "palette": "greenRed",
+                "showIcon": true
+              },
+              "numberFormat": {
+                "unit": 24,
+                "options": {
+                  "style": "decimal",
+                  "minimumFractionDigits": 1,
+                  "maximumFractionDigits": 1
+                }
+              }
+            }
+          ],
+          "filter": true,
+          "hierarchySettings": {
+            "idColumn": "Id",
+            "parentColumn": "ParentId",
+            "treeType": 0,
+            "expanderColumn": "Name",
+            "expandTopLevel": true
+          },
+          "sortBy": [{
+            "itemKey": "$gen_number_MsgRate_4",
+            "sortOrder": 2
+          }],
+          "labelSettings": [{
+              "columnId": "Name"
+            },
+            {
+              "columnId": "Id"
+            },
+            {
+              "columnId": "ParentId"
+            },
+            {
+              "columnId": "messageCount",
+              "label": "Message count"
+            },
+            {
+              "columnId": "P90Latency",
+              "label": "P90 Latency"
+            },
+            {
+              "columnId": "MsgRate",
+              "label": "Message rate"
+            }
+          ]
+        }
+      },
+      "conditionalVisibility": {
+        "parameterName": "SelectedRow",
+        "comparison": "isNotEqualTo",
+        "value": "default"
+      },
+      "customWidth": "50",
+      "name": "query - 3"
     },
     {
       "type": 3,
@@ -148,6 +429,7 @@
         "version": "KqlItem/1.0",
         "query": "let selRow = '{SelectedRow}';\nlet rowJson = parse_json(selRow);\nlet cap = extract_all(@\"\"\"Id\"\":\\s*\"\"([^\"\"]+)\", dynamic([1]), tostring(rowJson));\nlet deviceid = iff(rowJson.ParentId != \"\", rowJson.ParentId, cap[0]);\nlet data = promMetrics_CL\n| where Name_s == \"edgehub_messages_sent_total\"\n| extend dimensions=parse_json(Tags_s)\n| extend device = tostring(dimensions.edge_device)\n| where device  == deviceid\n| extend target = trim_start(@\"[^/]+/\", extractjson(\"$.to\", tostring(dimensions), typeof(string)))\n| extend source = trim_start(@\"[^/]+/\", tostring(dimensions.from))\n| extend messages = toint(Value_s)\n| extend timeUtc = TimeGeneratedUtc_t\n| extend sourceTarget = strcat(source,\"+\",target) \n| project  timeUtc, device, source, target, sourceTarget,  messages\n| order by sourceTarget, timeUtc\n| serialize | extend nextCount = next(messages, 1) | extend nextSourceTarget= next(sourceTarget, 1)\n| extend diff = iff((messages - nextCount) >= 0, messages - nextCount, messages)\n| where sourceTarget  == nextSourceTarget and diff >= 0\n| project  timeUtc, device, source, target, sourceTarget, messages, diff;\ndata\n| summarize messageCount = sum(diff) by source, target\n| extend id = ''\n| project id, source, target, messageCount\n| union (data\n    | sample-distinct 100 of source\n    | extend id = source\n    | union (data\n        | sample-distinct 100 of target\n        | extend  id = target)\n    | sample-distinct 100 of id\n    | project id);",
         "size": 0,
+        "exportToExcelOptions": "visible",
         "title": "Message flow graph",
         "timeContext": {
           "durationMs": 0
@@ -195,7 +477,7 @@
           "nodeIdField": "id",
           "sourceIdField": "source",
           "targetIdField": "target",
-          "edgeLabel": "messageCount",
+          "edgeSize": "messageCount",
           "nodeSize": null,
           "staticNodeSize": 100,
           "colorSettings": {
@@ -211,14 +493,14 @@
         "comparison": "isNotEqualTo",
         "value": "default"
       },
-      "customWidth": "55",
+      "customWidth": "50",
       "name": "query - 3"
     }
   ],
   "defaultResourceIds": [
-    "replace-with-log-analytics-workspace-resource-id",
+    "replace-with-log-analytics-resource-id",
     "Azure Monitor"
-  ],
+  ]
   "styleSettings": {},
   "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
 }
