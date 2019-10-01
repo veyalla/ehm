@@ -80,7 +80,6 @@ promMetrics_CL
 | extend device = tostring(dimensions.edge_device)
 | extend target = trim_start(@"[^/]+/", extractjson("$.to", tostring(dimensions), typeof(string)))
 | extend source = strcat(device, "::", trim_start(@"[^/]+/", tostring(dimensions.from)))
-| where source !contains "temp"
 | extend messages = toint(Value_s)
 | extend timeUtc = TimeGeneratedUtc_t
 | extend sourceTarget = strcat(source,"::",target)
@@ -91,7 +90,6 @@ promMetrics_CL
 | extend nextSourceTarget= next(sourceTarget, 1)
 | extend diff = iff((messages - nextCount) >= 0, messages - nextCount, 0)
 | where sourceTarget  == nextSourceTarget and diff >= 0
-| where source !contains "temp"
 | project  TimeGenerated = timeUtc, source, sourceTarget, messages, diff
 | summarize AggregatedValue = sum(diff) by  bin(TimeGenerated, 1m), source
 ```
