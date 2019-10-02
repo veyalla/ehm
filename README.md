@@ -95,7 +95,7 @@ promMetrics_CL
 ```
 The query can be modified to filter to specific devices or modules.
 
-### Query for alert when message received not same as messages sent upstream
+### Query for alert when messages received not same as messages sent upstream
 
 *Assumes all received messages are sent upstream.*
 
