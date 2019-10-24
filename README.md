@@ -1,5 +1,9 @@
 # Azure IoT Edge Hub experimental metrics
 
+## Architecture
+
+![media/metrics_arch.png](media/metrics_arch.png)
+
 ## Setup
 
 1. [Create](https://docs.microsoft.com/en-us/azure/azure-monitor/learn/quick-create-workspace#create-a-workspace) an Azure Log Analytics workspace and note its [workspace ID and key](https://docs.microsoft.com/en-us/azure/azure-monitor/platform/agent-windows#obtain-workspace-id-and-key).
