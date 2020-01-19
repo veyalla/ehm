@@ -103,7 +103,7 @@
 
     However, this requires some cloud infra setup for routing *metricsCollector* messages to a different Event Hub which are then picked up by a Azure Function and sent to an Azure Monitor workspace.
 
-    I've found [Pulumi](https://www.pulumi.com/docs/get-started/azure/install-pulumi/), an infrastructure-as-code tool, to be an easy and pleasant way of setting this up. The [routeViaIoTHub folder](./routeViaIoTHub) contains the code I used. If you already have existing resources, you can use Pulumi to [import](https://www.pulumi.com/blog/adopting-existing-cloud-resources-into-pulumi/) them or if don't want to use Pulumi, you can take the Azure Function logic and deploy it via your preferred method.
+    I've found [Pulumi](https://www.pulumi.com/docs/get-started/azure/install-pulumi/), an infrastructure-as-code tool, to be an easy and pleasant way of setting this up. The [routeViaIoTHub folder](./routeViaIoTHub) contains the code I used. If you already have existing resources, you can use Pulumi to [import](https://www.pulumi.com/blog/adopting-existing-cloud-resources-into-pulumi/) them or if don't want to use Pulumi, you can take the Azure Function [logic](https://github.com/veyalla/ehm/blob/8ac51e21213662757463927a20a69cf34afd9ff2/routeViaIoTHub/index.ts#L78) and deploy it via your preferred method.
 
     This pattern doesn't require any Azure Monitor credentials on the device side. Simply use `IoTHub` as the `syncTarget` like so:
 
