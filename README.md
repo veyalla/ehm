@@ -11,6 +11,29 @@
 1. Use IoT Edge Hub with tag `1.0.9-rc2` and following configuration: 
 
     ```json
+
+    # Linux settings
+
+    "edgeHub": {
+        "settings": {
+            "image": "mcr.microsoft.com/azureiotedge-hub:1.0.9-rc2",
+            "createOptions": "{\"ExposedPorts\":{\"9600/tcp\":{},\"5671/tcp\":{},\"8883/tcp\":{}}}"
+        },
+        "type": "docker",
+        "env": {
+            "experimentalfeatures__enabled": {
+                "value": true
+            },
+            "experimentalfeatures__enableMetrics": {
+                "value": true
+            }
+        },
+        "status": "running",
+        "restartPolicy": "always"
+    }
+
+    # Windows settings (requires running as 'ContainerAdministrator' for now)
+
     "edgeHub": {
         "settings": {
             "image": "mcr.microsoft.com/azureiotedge-hub:1.0.9-rc2",
@@ -28,15 +51,28 @@
         "status": "running",
         "restartPolicy": "always"
     }
+
     ```
 
-    >Windows containers need edgeHub to be run a ContainerAdministrator for now if exposing metrics endpoint. Please remove the User key from createOptions on Linux.
 
 1. Add the *metricscollector* module to the deployment:
 
     | Linux amd64 image                    | Windows amd64 image                          |
     |--------------------------------------|----------------------------------------------|
     | `veyalla/metricscollector:0.0.4-amd64` | `veyalla/metricscollector:0.0.5-windows-amd64` |
+
+    **Desired properties for *metricscollector***
+
+    | Name                  | Description                                                                                                                                                                            | Type         |
+    |-----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|
+    | `schemaVersion`       | Set to "1.0"                                                                                                                                                                           | string       |
+    | `scrapeFrequencySecs` | Metrics collection period in seconds. Increase or decrease this number depending on how often you want to collect metrics data.                                                      | int          |
+    | `metricsFormat`       | Set to "Json" or "Prometheus".   Note, the metrics endpoints are expected to be in  Prometheus format. If set to "Json", the metrics are converted JSON format in the collector module | string       |
+    | `syncTarget`          | Set to "AzureLogAnalytics" or "IoTHub"  When set to "AzureLogAnalytics", environment variables  `AzMonWorkspaceId` and `AzMonWorkspaceKey` need to be set                              | string       |
+    | `endpoints`           | A JSON section containing name and collection URL key-value pairs.                                                                                                                     | JSON section |
+    >Sometimes you might see a timeout error in *metricscollector* during the first collection, subsequent collection attempts (after configurated collection period) should succeed. This is because IoT Edge doesn't provide module start order guarantees and it might start this module before edgeHub's metrics endpoint is ready.
+
+    **Sending metrics to Azure Monitor directly**
 
     Set the following environment variables for this module:
 
@@ -61,13 +97,36 @@
     }
     ```
 
-    | Name                  | Description                                                                                                                                                                            | Type         |
-    |-----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|
-    | `schemaVersion`       | Set to "1.0"                                                                                                                                                                           | string       |
-    | `scrapeFrequencySecs` | Metrics collection period in seconds                                                                                                                                                   | int          |
-    | `metricsFormat`       | Set to "Json" or "Prometheus".   Note, the metrics endpoints are expected to be in  Prometheus format. If set to "Json", the metrics are converted JSON format in the collector module | string       |
-    | `syncTarget`          | Set to "AzureLogAnalytics" or "IoTHub"  When set to "AzureLogAnalytics", environment variables  `AzMonWorkspaceId` and `AzMonWorkspaceKey` need to be set                              | string       |
-    | `endpoints`           | A JSON section containing name and collection URL key-value pairs.                                                                                                                     | JSON section |
+    **Sending metrics to Azure Monitor via IoT Hub**
+
+    As shown in the architecture diagram it is also possible to send data to Azure Monitor via IoT Hub. This pattern is useful in scenarios where the edge device cannot communicate to any other external endpoint other than IoT Hub. Store and forward (leveraging the IoT Edge Hub) of metrics data when the device is offline is another useful property of this pattern.
+
+    However, this requires some cloud infra setup for routing *metricsCollector* messages to a different Event Hub which are then picked up by a Azure Function and sent to an Azure Monitor workspace.
+
+    I've found [Pulumi](https://www.pulumi.com/docs/get-started/azure/install-pulumi/), an infrastructure-as-code tool, to be an easy and pleasant way of setting this up. The [routeViaIoTHub folder](./routeViaIoTHub) contains the code I used. If you already have existing resources, you can use Pulumi to [import](https://www.pulumi.com/blog/adopting-existing-cloud-resources-into-pulumi/) them or if don't want to use Pulumi, you can take the Azure Function logic and deploy it via your preferred method.
+
+    This pattern doesn't require any Azure Monitor credentials on the device side. Simply use `IoTHub` as the `syncTarget` like so:
+
+    ```json
+    {
+        "properties.desired": {
+            "schemaVersion": "1.0",
+            "scrapeFrequencySecs": 300,
+            "metricsFormat": "Json",
+            "syncTarget": "IoTHub",
+            "endpoints": {
+                "edgeHub": "http://edgeHub:9600/metrics"
+            }
+        }
+    }
+    ```
+
+## Visualize
+
+Deploy the Azure Monitor Workbook template by following the instructions from [here](azmon-workbook-template/).
+
+Here is a screenshot of the visualization that Workbook provides:
+![](./azmon-workbook-template/media/workbook-ss.png)
 
 ## Configure Alerts
 
@@ -146,9 +205,7 @@ set1
 | summarize AggregatedValue = max(delta) by bin_at(TimeGenerated, 30m, (now() - 5m)), source
 ```
 
-## Visualize
 
-1. Deploy the Azure Monitor Workbook template by following the instructions from [here](azmon-workbook-template/).
 
 
 
