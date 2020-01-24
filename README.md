@@ -95,7 +95,7 @@
     }
     ```
 
-    > 💣 If you're using the portal, remove the `"properties.desired"` text as it's added automatically:
+    > 💣 If you're using the portal, remove the `"properties.desired"` text as it's added automatically. See the screenshot below:
 
     ![](media/portal-desired-props.png)
 
