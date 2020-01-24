@@ -84,18 +84,21 @@
     Desired properties for the module:
 
     ```json
-    {
-        "properties.desired": {
-            "schemaVersion": "1.0",
-            "scrapeFrequencySecs": 300,
-            "metricsFormat": "Json",
-            "syncTarget": "AzureLogAnalytics",
-            "endpoints": {
-                "edgeHub": "http://edgeHub:9600/metrics"
-            }
+    "properties.desired": {
+        "schemaVersion": "1.0",
+        "scrapeFrequencySecs": 300,
+        "metricsFormat": "Json",
+        "syncTarget": "AzureLogAnalytics",
+        "endpoints": {
+            "edgeHub": "http://edgeHub:9600/metrics"
         }
     }
     ```
+
+    > 💣 If you're using the portal, remove the `"properties.desired"` text as it's added automatically:
+
+    ![](media/portal-desired-props.png)
+
 
     **Sending metrics to Azure Monitor via IoT Hub**
 
@@ -108,15 +111,13 @@
     This pattern doesn't require any Azure Monitor credentials on the device side. Simply use `IoTHub` as the `syncTarget` like so:
 
     ```json
-    {
-        "properties.desired": {
-            "schemaVersion": "1.0",
-            "scrapeFrequencySecs": 300,
-            "metricsFormat": "Json",
-            "syncTarget": "IoTHub",
-            "endpoints": {
-                "edgeHub": "http://edgeHub:9600/metrics"
-            }
+    "properties.desired": {
+        "schemaVersion": "1.0",
+        "scrapeFrequencySecs": 300,
+        "metricsFormat": "Json",
+        "syncTarget": "IoTHub",
+        "endpoints": {
+            "edgeHub": "http://edgeHub:9600/metrics"
         }
     }
     ```
