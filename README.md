@@ -121,6 +121,13 @@
     }
     ```
 
+    Ensure there is a route defined in the deployment to Edge Hub:
+
+    ```
+    FROM /messages/modules/metricscollector/* INTO $upstream
+    ```
+ 
+
 ## Visualize
 
 Deploy the Azure Monitor Workbook template by following the instructions from [here](azmon-workbook-template/).
